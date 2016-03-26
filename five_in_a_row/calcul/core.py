@@ -3,11 +3,114 @@ import time
 from random import randint
 from threading import Thread
 from time import sleep
+from copy import deepcopy
 
 __author__ = "caoliang"
+class Tree():
+    def __init__(self, score = 0, pos = (-1,-1), ly = 0):
+        self.score = score
+        self.pos = pos
+        self.ptr_sum = 0
+        self.ptr = []
+        self.layer = ly
+
+    def add(self,pointer):
+        self.ptr_sum = self.ptr_sum + 1
+        pointer.layer = self.layer + 1
+        self.ptr.append(pointer)
+
+    def show(self):
+        print("当前有：",self.ptr_sum,"个子节点")
+
+    def find_ele(self,pos):
+        for i in self.ptr:
+            if pos == i.pos:
+                return 1
+        return 0
+
+
+
+    def delete(self,ele):
+        self.ptr_sum = self.ptr_sum - 1
+        self.ptr.remove(ele)
+
+def show_all(tr):
+    print("layer: ",tr.layer,"score: ",tr.score,"pos: ",tr.pos)
+    if tr.ptr_sum != 0:
+        print('\n')
+        for i in tr.ptr:
+            show_all(i)
+
+def show_layer(tr,ly):
+    if tr.layer == ly:
+        print("layer: ",tr.layer,"score: ",tr.score,"pos: ",tr.pos)
+    if tr.ptr_sum != 0:
+        for i in tr.ptr:
+            show_layer(i,ly)
+
+def copy_tree(new_tr,tr):
+    for i in tr.ptr:
+        new_tr.add(i)
+
+def cut_branch_pl(new_tr,tr):
+    li = []
+
+    for i in tr.ptr:
+        li = li + [i.score]            
+    li.sort()    
+    best_level = li[0]
+    for i in tr.ptr:
+        if i.score <= best_level:
+            new_tr.add(i)
+
+def cut_branch_pc(new_tr,tr):
+    li = []
+
+    for i in tr.ptr:
+        li = li + [i.score] 
+                   
+    li.sort()
+    li.reverse()
+
+    valid_step = len(li) - 1
+    if valid_step > 8:
+        valid_step = 8
+
+    best_level = li[valid_step]
+    for i in tr.ptr:
+        if i.score >= best_level:
+            new_tr.add(i)
+    
+
+    #计算每一个子树的分值
+def cal_sub(tr):
+    if tr.ptr_sum == 0 :
+        return tr.score
+    else:
+        score = tr.score
+        for i in tr.ptr:
+            score = score + cal_sub(i) 
+        return score
+
+    #寻找tr 所有子树中最大的一支,并弹出该子树
+def cal_max_branch(tr):
+    if tr.ptr_sum == 0:
+        return tr
+    else:
+        max_score = -9000000     
+
+        for i in tr.ptr:
+            new_score = cal_sub(i)
+
+            #统计最大值
+            if new_score > max_score:
+                max_score = new_score
+                best_ptr = i                
+
+        return best_ptr
 
 class Core():
-    def __init__(self):
+    def __init__(self,order):
 
         #棋盘：0为空位，1为玩家落子，2为电脑落子
         self.table   = [([0] * 15) for i in range(15)]
@@ -15,12 +118,12 @@ class Core():
         self.busy        = 0
         self.who_win     = 0  
 
-        #上一步行棋的位置
-        self.last        = [-1,-1]
+        #行棋的记录
+        self.index   = 0
+        self.step    = [([0] * 2) for i in range(226)]
 
         #上一步行棋在4个方向上的其他棋子数
         self.last_pcs_dirction   = [0,0,0,0]
-        self.five_pcs = [([0] * 2) for i in range(5)]
 
         #评分表
         self.table_type =['aaaaa',
@@ -52,49 +155,141 @@ class Core():
                           250,
                           200]  
         
+
     def player_take(self,pos = (0,0)):
 
         if self.table[pos[0]][pos[1]] == 0:
             self.table[pos[0]][pos[1]] = 1
-            self.last = pos
-            self.test_player()
-            return 1
-        return 0
+            
+            self.index = self.index + 1
+            self.step[self.index] = pos
 
-    def computer_take(self):
+            self.test_player()
+            if self.who_win == 0:
+                self.computer_ctl()    
+    
+    #电脑走棋控制函数
+    def computer_ctl(self):
         if self.busy == 0 :
             self.busy = 1
-            task = Thread(target=self.computer_cal,args=(0,))
+            if self.index<2:
+                task = Thread(target=self.computer_take_first,args=(0,))
+            else:
+                task = Thread(target=self.computer_take,args=(0,))
             task.start()
             return 1
         return 0
-    def computer_cal(self,tmp):
-        x = 0
-        y = 0
-        old_score = 0
+
+    def computer_take_first(self,tmp):
+        sleep(0.6)
+        if self.index == 0:
+            self.table[7][7] == 2
+            self.index = self.index + 1
+            self.step[self.index] = (7,7)
+
+        elif self.index == 1:
+            tab_map = [[0,-1],[0,1],[-1,0],[1,0],
+                       [1,-1],[1,1],[-1,-1],[-1,1]]
+
+            if self.step[1] == (7,7):                
+                x,y = tab_map[randint(0,7)]
+                self.table[7+x][7+y] = 2
+                self.index = self.index + 1
+                self.step[self.index] = (7+x,7+y)
+                
+            else:
+                x , y = self.step[self.index]
+                x = x - 7
+                y = y - 7
+                if x > 0:
+                    x = 1
+                if x < 0:
+                    x = -1
+                if y > 0:
+                    y = 1
+                if y < 0:
+                    y = -1
+
+                x = self.step[self.index][0]-x
+                y = self.step[self.index][1]-y
+
+                self.table[x][y] = 2
+                self.index = self.index + 1
+                self.step[self.index] = (x,y)
+                
+        else:
+            print("Error! self.index out of range !")
+        
+        self.busy = 0
+    
+    def computer_take(self,tmp):
+
+        top_map = Tree()
+        self.com_tree(self.table,top_map,2,2,True)
+
+        '''
+        for i in top_map.ptr:
+            print('\n')
+            print("**** ",i.pos," **** ",i.score ," ****")
+            show_layer(i,2)
+        for i in top_map.ptr:
+            print("\n\n add_score:",i.pos,cal_sub(i))
+        '''
+        x,y = self.search(top_map)
+
+        self.table[x][y] = 2
+        self.index = self.index + 1
+        self.step[self.index] = [x,y]
+
+        self.test_computer()
+        self.busy = 0
+    
+    #填写树 order 代表接下来执棋的顺序 2：电脑  1：玩家
+    def com_tree(self,table,top_map,order = 2,depth = 1,first=False):
+
+        temp_root = Tree()
 
         for j in range(15):
             for i in range(15):
-                if self.table[i][j] == 0:
-                    new_score = self.cal_single_pcs_value(self.table,[i,j],2)
-                    if  new_score > old_score:
-                        x=i
-                        y=j
-                        old_score = new_score
+                if table[i][j] == 0:
+                    score = self.cal_single_pcs_value(table,[i,j],order)
+                    if score != 0:
+                        if order == 1 :
+                            score = -1 *score
+                        node = Tree(score,(i,j))
+                        temp_root.add(node)
+        
+        #自己这边的棋盘，价值大于0的落子点已经填入到树中
+        #接下来把对对方有利的落子点，也添加到这里
+        if order == 2:
+            for j in range(15):
+                for i in range(15):
+                    if table[i][j] == 0:
+                        score = self.cal_single_pcs_value(table,[i,j],1)
+                        if score != 0 and temp_root.find_ele((i,j))==0:
+                            node = Tree(0,(i,j))
+                            temp_root.add(node)
+        
+            copy_tree(top_map,temp_root)
+            #cut_branch_pc(top_map,temp_root)
+        else:
+            cut_branch_pl(top_map,temp_root)
+                        
+        #剪枝完毕，确认是否要进行下一次迭代
+        dep = depth - 1
+        if dep > 0:
+            for i in top_map.ptr:
+                tab = deepcopy(table)
+                x,y = i.pos
+                tab[x][y] = order
+                if order == 2:
+                    self.com_tree(tab,i,1,dep)
+                else:
+                    self.com_tree(tab,i,2,dep)
 
-        if old_score == 0:
-            while True:
-                x = randint(5,11)
-                y = randint(5,11)
-                if self.table[x][y]==0:
-                    print("!",x,y)
-                    break
-        self.cal_single_pcs_value_debug(self.table,(x,y),2)       
-        self.table[x][y] = 2
-        self.last = [x,y]
-        self.test_computer()
-        self.busy = 0
-
+    def search(self,top_map):
+        return cal_max_branch(top_map).pos
+            
     def cal_sum_arround(self,table=[],pos = (0,0),key = 1):
 
         x,y = pos
@@ -155,14 +350,14 @@ class Core():
         return dir
 
     def test_player(self):
-        self.last_pcs_dirction = self.cal_sum_arround(self.table,self.last)
+        self.last_pcs_dirction = self.cal_sum_arround(self.table,self.step[self.index])
         for i in range(4):
             if self.last_pcs_dirction[i] >=4:
                 self.who_win = 1 
                 break
 
     def test_computer(self):
-        self.last_pcs_dirction = self.cal_sum_arround(self.table,self.last,2)
+        self.last_pcs_dirction = self.cal_sum_arround(self.table,self.step[self.index],2)
         for i in range(4):
             if self.last_pcs_dirction[i] >=4:
                 self.who_win = 2 
@@ -173,7 +368,7 @@ class Core():
         chess_type = ['' for i in range(8)]
 
         #判断 8个方向上的棋子数
-        for i in range(1,15):
+        for i in range(1,5):
             if (x-i) < 0:
                 break                
             elif table[x-i][y] == key :
@@ -183,8 +378,8 @@ class Core():
             else:
                 break
 
-        for i in range(1,15):
-            if (x-i) < 0 or  y-i < 0:
+        for i in range(1,5):
+            if (x-i) < 0 or  (y-i) < 0:
                 break
             elif table[x-i][y-i] == key :
                 chess_type[1] = chess_type[1] + 'a'
@@ -193,7 +388,7 @@ class Core():
             else:
                 break
 
-        for i in range(1,15):
+        for i in range(1,5):
             if (y-i) < 0 :
                 break
             elif table[x][y-i] == key :
@@ -203,7 +398,7 @@ class Core():
             else:
                 break
 
-        for i in range(1,15):
+        for i in range(1,5):
             if (x+i)>14 or (y-i) < 0 :
                 break
             elif table[x+i][y-i] == key :
@@ -214,7 +409,7 @@ class Core():
                 break
         # 后4个方向
 
-        for i in range(1,15):
+        for i in range(1,5):
             if (x+i)>14:
                 break
             elif table[x+i][y] == key :
@@ -224,7 +419,7 @@ class Core():
             else:
                 break
 
-        for i in range(1,15):
+        for i in range(1,5):
             if (x+i)>14 or (y+i)>14:
                 break
             elif table[x+i][y+i] == key:
@@ -234,7 +429,7 @@ class Core():
             else:
                 break
 
-        for i in range(1,15):
+        for i in range(1,5):
             if (y+i)>14:
                 break
             elif table[x][y+i] == key:
@@ -243,12 +438,12 @@ class Core():
                 chess_type[6] = chess_type[6] + '?'
             else:
                 break
-        for i in range(1,15):
+        for i in range(1,5):
             if (x-i)<0 or (y+i)>14:
                 break
             elif table[x-i][y+i] == key:
                 chess_type[7] = chess_type[7] + 'a'
-            elif table:
+            elif table[x-i][y+i] == 0:
                 chess_type[7] = chess_type[7] + '?'
             else:
                 break

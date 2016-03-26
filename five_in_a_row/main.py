@@ -26,6 +26,7 @@ def main():
     btn_start = sc.Button(gv.g_btn_start_imgloc,gv.g_size_btn,gv.g_pos_btn_start)
     btn_about = sc.Button(gv.g_btn_about_imgloc,gv.g_size_btn,gv.g_pos_btn_about)
 
+    surface_game()
     while True:
         for event in pygame.event.get():
             if event.type == QUIT:
@@ -69,12 +70,13 @@ def surface_about():
         gv.g_clock.tick(30)
 
 def surface_game():
-    next_player  = 0
+    next_player  = 1
 
     if next_player==0:
         draw_pcs_tab = sc.draw_table_cp_first
     else:
         draw_pcs_tab = sc.draw_table_pl_first
+
     grid_img  = sc.loadimg("img/grid.png",gv.g_size_win)
     w_img     = sc.loadimg("img/round_white.png",(24,24))
     b_img     = sc.loadimg("img/round_black.png",(24,24))
@@ -84,7 +86,7 @@ def surface_game():
     computer_pgsbar = sc.ProgressBar("img/round_white.png",(12,12),(655,56),35)
     player_pgsbar   = sc.ProgressBar("img/round_black.png",(12,12),(720,440),40)
     
-    wzqcore = core.Core()
+    wzqcore = core.Core(1)
     input_info = sc.GetInput();
     
     while True:
@@ -108,23 +110,22 @@ def surface_game():
             gv.g_screen.blit(win_img,(300,495))
             gv.g_screen.blit(one_more_img,(20,420))
             
-        #未分胜负，电脑忙时绘制进度条            
-        elif next_player%2 == 0:            
-            computer_pgsbar.draw()
-            if wzqcore.computer_take()==1:
-                next_player = next_player + 1
-
-        #玩家落子
+        #未分胜负         
         else:
-            input_status = input_info.scan()
-            if input_status[0] == 1:
-                tab_pos = sc.pixpos_to_table((input_status[1],input_status[2]))        
-                if wzqcore.player_take(tab_pos) == 1:
-                    next_player = next_player + 1
-            #绘制进度条
-            gv.g_screen.blit(think_img,(680,420))
-            player_pgsbar.draw()            
-            
+            #电脑落子  
+            if wzqcore.busy == 1:
+                computer_pgsbar.draw()
+
+            #玩家落子
+            else:
+                input_status = input_info.scan()
+                if input_status[0] == 1:
+                    tab_pos = sc.pixpos_to_table((input_status[1],input_status[2]))        
+                    wzqcore.player_take(tab_pos)
+                    
+                #绘制进度条
+                gv.g_screen.blit(think_img,(680,420))
+                player_pgsbar.draw()
 
         if back_btn.update(nop) == 1:
             break

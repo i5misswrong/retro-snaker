@@ -92,8 +92,8 @@ def draw_table_pl_first(core,w_img,b_img):
             if core.table[i][j] == 1:   #black
                 gv.g_screen.blit(b_img,teble_to_pixpos((i,j)))
 
-    if core.last[0] > -1:
-        circle_pos = teble_to_pixpos(core.last)
+    if core.index > 0:
+        circle_pos = teble_to_pixpos(core.step[core.index])
         x = circle_pos[0] + 12
         y = circle_pos[1] + 12
 
@@ -107,8 +107,8 @@ def draw_table_cp_first(core,w_img,b_img):
             if core.table[i][j] == 2:   #black
                 gv.g_screen.blit(b_img,teble_to_pixpos((i,j)))
 
-    if core.last[0] > -1:
-        circle_pos = teble_to_pixpos(core.last)
+    if core.index > 0:
+        circle_pos = teble_to_pixpos(core.step[core.index])
         x = circle_pos[0] + 12
         y = circle_pos[1] + 12
 
@@ -123,7 +123,7 @@ def draw_five(core):
 
 class GetInput():
     def __init__(self):
-        #error �������Χ
+        #error 鼠标可以偏移竖线的距离
         self.border_x = (gv.g_pos_grid_start[0],gv.g_size_grid + gv.g_pos_grid_start[0])
         self.border_y = (gv.g_pos_grid_start[1],gv.g_size_grid + gv.g_pos_grid_start[1])
 
@@ -134,21 +134,21 @@ class GetInput():
         return_data = (-1,0,0)
         mouse_status = pygame.mouse.get_pressed()[0]
 
-        #��갴�����£���¼λ�ã����������Ѿ�����
+        #当鼠标按下的时候
         if mouse_status == 1:
             self.mouse_kdown = 1
             self.last_position = pygame.mouse.get_pos()
 
-        #���̧���ж��Ƿ�Ӱ��µ�˲��̧��
+        #鼠标未按下
         else :
-            #��Ч�������ж�λ��
+            #从按下的瞬间抬起
             if self.mouse_kdown == 1:
                 self.mouse_kdown = 0
                 pos = pygame.mouse.get_pos()
                 if self.ptr_in_border(pos) ==  1:
                     return_data = (1,pos[0],pos[1])
                 else:
-                    #������Ч����Ϊ̧���˲���Ƶ��˱߽�֮��
+                    #移出边界，无效
                     pass
 
         return return_data
