@@ -1,2 +1,2 @@
-# cls_game_project
+# Retro Snaker
 一个简易的贪吃蛇游戏。
